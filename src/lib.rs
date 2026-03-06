@@ -36,6 +36,8 @@ pub mod cbd;
 pub mod indcpa;
 pub mod kem;
 pub mod ntt;
+#[cfg(feature = "simd")]
+pub mod ntt_simd;
 pub mod params;
 pub mod poly;
 pub mod polyvec;

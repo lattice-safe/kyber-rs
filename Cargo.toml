@@ -24,6 +24,7 @@ default = ["std"]
 std = ["getrandom"]
 getrandom = ["dep:getrandom"]
 serde = ["dep:serde"]
+simd = []
 
 [dependencies]
 sha3 = { version = "0.10", default-features = false }

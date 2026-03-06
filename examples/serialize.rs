@@ -13,7 +13,11 @@ fn main() {
     let coins = [42u8; 64];
     let (pk_bytes, sk_bytes) = keypair_derand(ML_KEM_768, &coins);
     println!("Alice generates key pair:");
-    println!("  pk ({} bytes): {:02x?}...", pk_bytes.len(), &pk_bytes[..16]);
+    println!(
+        "  pk ({} bytes): {:02x?}...",
+        pk_bytes.len(),
+        &pk_bytes[..16]
+    );
     println!("  sk ({} bytes): [kept secret]", sk_bytes.len());
 
     // Alice sends pk_bytes to Bob (e.g. over the network)
@@ -23,7 +27,11 @@ fn main() {
     let enc_coins = [0xCD; 32];
     let (ct_bytes, ss_bob) = encaps_derand(ML_KEM_768, &pk_bytes, &enc_coins);
     println!("Bob encapsulates:");
-    println!("  ct ({} bytes): {:02x?}...", ct_bytes.len(), &ct_bytes[..16]);
+    println!(
+        "  ct ({} bytes): {:02x?}...",
+        ct_bytes.len(),
+        &ct_bytes[..16]
+    );
     println!("  shared secret: {:02x?}", &ss_bob[..]);
 
     // Bob sends ct_bytes to Alice
@@ -34,6 +42,9 @@ fn main() {
     println!("Alice decapsulates:");
     println!("  shared secret: {:02x?}", &ss_alice[..]);
 
-    println!("\nShared secrets match: {}", if ss_bob == ss_alice { "✅" } else { "❌" });
+    println!(
+        "\nShared secrets match: {}",
+        if ss_bob == ss_alice { "✅" } else { "❌" }
+    );
     println!("\nBoth parties now share a 32-byte symmetric key for AES-256 etc.");
 }

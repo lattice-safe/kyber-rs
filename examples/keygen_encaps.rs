@@ -3,7 +3,7 @@
 //! Run with: cargo run --example keygen_encaps
 
 use kyber::kem::{decaps, encaps_derand, keypair_derand};
-use kyber::params::{ML_KEM_512, ML_KEM_768, ML_KEM_1024, KyberMode};
+use kyber::params::{KyberMode, ML_KEM_1024, ML_KEM_512, ML_KEM_768};
 
 fn demo(mode: KyberMode, name: &str) {
     // In production, use a CSPRNG for all coins
@@ -22,7 +22,14 @@ fn demo(mode: KyberMode, name: &str) {
 
     let ss_receiver = decaps(mode, &ct, &sk);
     println!("  Shared secret (receiver): {:02x?}", &ss_receiver[..8]);
-    println!("  Match: {}\n", if ss_sender == ss_receiver { "✅" } else { "❌" });
+    println!(
+        "  Match: {}\n",
+        if ss_sender == ss_receiver {
+            "✅"
+        } else {
+            "❌"
+        }
+    );
 }
 
 fn main() {
