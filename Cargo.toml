@@ -1,5 +1,5 @@
 [package]
-name = "kyber-rs"
+name = "lattice-kyber"
 version = "0.1.0"
 edition = "2021"
 rust-version = "1.70"
@@ -9,7 +9,7 @@ license = "MIT"
 readme = "README.md"
 repository = "https://github.com/lattice-safe/kyber-rs"
 homepage = "https://github.com/lattice-safe"
-documentation = "https://docs.rs/kyber-rs"
+documentation = "https://docs.rs/lattice-kyber"
 keywords = [
     "ml-kem",
     "fips-203",
