@@ -1,0 +1,29 @@
+[package]
+name = "kyber-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2021"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+
+[dependencies.kyber]
+path = ".."
+
+[[bin]]
+name = "fuzz_kem_roundtrip"
+path = "fuzz_targets/fuzz_kem_roundtrip.rs"
+doc = false
+
+[[bin]]
+name = "fuzz_decaps"
+path = "fuzz_targets/fuzz_decaps.rs"
+doc = false
+
+[[bin]]
+name = "fuzz_poly_deserialize"
+path = "fuzz_targets/fuzz_poly_deserialize.rs"
+doc = false
