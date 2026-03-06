@@ -1,0 +1,50 @@
+[package]
+name = "kyber-rs"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.70"
+authors = ["lattice-safe contributors"]
+description = "Pure Rust implementation of ML-KEM (FIPS 203) / CRYSTALS-Kyber post-quantum key encapsulation mechanism"
+license = "MIT"
+readme = "README.md"
+repository = "https://github.com/lattice-safe/kyber-rs"
+homepage = "https://github.com/lattice-safe"
+documentation = "https://docs.rs/kyber-rs"
+keywords = [
+    "ml-kem",
+    "fips-203",
+    "post-quantum",
+    "cryptography",
+    "key-encapsulation",
+]
+categories = ["cryptography", "no-std"]
+
+[features]
+default = ["std"]
+std = ["getrandom"]
+getrandom = ["dep:getrandom"]
+serde = ["dep:serde"]
+
+[dependencies]
+sha3 = { version = "0.10", default-features = false }
+subtle = { version = "2", default-features = false }
+zeroize = { version = "1", features = ["alloc"], default-features = false }
+getrandom = { version = "0.2", optional = true }
+serde = { version = "1", features = ["derive"], optional = true }
+
+[lib]
+name = "kyber"
+path = "src/lib.rs"
+
+# [dev-dependencies]
+# criterion = { version = "0.5", features = ["html_reports"] }
+
+# [[bench]]
+# name = "kyber_bench"
+# harness = false
+
+[profile.release]
+opt-level = 3
+
+[package.metadata.docs.rs]
+all-features = true
