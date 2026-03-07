@@ -5,9 +5,10 @@ use crate::ntt;
 use crate::params::{KyberMode, N, Q32};
 use crate::reduce::{barrett_reduce, montgomery_reduce};
 use crate::symmetric;
+use zeroize::{Zeroize, ZeroizeOnDrop};
 
 /// A polynomial with N=256 i16 coefficients.
-#[derive(Clone)]
+#[derive(Clone, Zeroize, ZeroizeOnDrop)]
 pub struct Poly {
     pub coeffs: [i16; N],
 }
@@ -123,9 +124,9 @@ impl Poly {
     /// Convert message bytes to polynomial.
     pub fn frommsg(msg: &[u8; 32]) -> Self {
         let mut p = Poly::new();
-        for i in 0..N / 8 {
+        for (i, &byte) in msg.iter().enumerate() {
             for j in 0..8 {
-                let mask = -(((msg[i] >> j) & 1) as i16);
+                let mask = -(((byte >> j) & 1) as i16);
                 p.coeffs[8 * i + j] = mask & ((Q32 as i16 + 1) / 2);
             }
         }
@@ -134,15 +135,15 @@ impl Poly {
 
     /// Convert polynomial to message bytes.
     pub fn tomsg(&self, msg: &mut [u8; 32]) {
-        for i in 0..N / 8 {
-            msg[i] = 0;
+        for (i, byte) in msg.iter_mut().enumerate() {
+            *byte = 0;
             for j in 0..8 {
                 let mut t = self.coeffs[8 * i + j];
                 // Freeze
                 t += (t >> 15) & (Q32 as i16);
                 // (t << 1) + Q/2) / Q & 1
-                let val = (((t as u16) << 1).wrapping_add(Q32 as u16 / 2)) / (Q32 as u16) & 1;
-                msg[i] |= (val as u8) << j;
+                let val = ((((t as u16) << 1).wrapping_add(Q32 as u16 / 2)) / (Q32 as u16)) & 1;
+                *byte |= (val as u8) << j;
             }
         }
     }
@@ -154,10 +155,10 @@ impl Poly {
             128 => {
                 // d=4
                 for i in 0..N / 8 {
-                    for j in 0..8 {
-                        let mut u = self.coeffs[8 * i + j] as i16;
+                    for (j, tj) in t.iter_mut().enumerate() {
+                        let mut u = self.coeffs[8 * i + j];
                         u += (u >> 15) & (Q32 as i16);
-                        t[j] = ((((u as u32) << 4) + Q32 as u32 / 2) / Q32 as u32 & 15) as u8;
+                        *tj = (((((u as u32) << 4) + Q32 as u32 / 2) / Q32 as u32) & 15) as u8;
                     }
                     r[4 * i] = t[0] | (t[1] << 4);
                     r[4 * i + 1] = t[2] | (t[3] << 4);
@@ -168,10 +169,10 @@ impl Poly {
             160 => {
                 // d=5
                 for i in 0..N / 8 {
-                    for j in 0..8 {
-                        let mut u = self.coeffs[8 * i + j] as i16;
+                    for (j, tj) in t.iter_mut().enumerate() {
+                        let mut u = self.coeffs[8 * i + j];
                         u += (u >> 15) & (Q32 as i16);
-                        t[j] = ((((u as u32) << 5) + Q32 as u32 / 2) / Q32 as u32 & 31) as u8;
+                        *tj = (((((u as u32) << 5) + Q32 as u32 / 2) / Q32 as u32) & 31) as u8;
                     }
                     r[5 * i] = t[0] | (t[1] << 5);
                     r[5 * i + 1] = (t[1] >> 3) | (t[2] << 2) | (t[3] << 7);
@@ -189,9 +190,9 @@ impl Poly {
         let mut p = Poly::new();
         match mode.poly_compressed_bytes() {
             128 => {
-                for i in 0..N / 2 {
-                    p.coeffs[2 * i] = ((((a[i] & 15) as u32 * Q32 as u32) + 8) >> 4) as i16;
-                    p.coeffs[2 * i + 1] = ((((a[i] >> 4) as u32 * Q32 as u32) + 8) >> 4) as i16;
+                for (i, &byte) in a.iter().enumerate().take(N / 2) {
+                    p.coeffs[2 * i] = ((((byte & 15) as u32 * Q32 as u32) + 8) >> 4) as i16;
+                    p.coeffs[2 * i + 1] = ((((byte >> 4) as u32 * Q32 as u32) + 8) >> 4) as i16;
                 }
             }
             160 => {
@@ -205,8 +206,8 @@ impl Poly {
                     t[5] = (a[5 * i + 3] >> 1) & 0x1F;
                     t[6] = (a[5 * i + 3] >> 6) | ((a[5 * i + 4] << 2) & 0x1F);
                     t[7] = a[5 * i + 4] >> 3;
-                    for j in 0..8 {
-                        p.coeffs[8 * i + j] = (((t[j] as u32 * Q32 as u32) + 16) >> 5) as i16;
+                    for (j, &tj) in t.iter().enumerate() {
+                        p.coeffs[8 * i + j] = (((tj as u32 * Q32 as u32) + 16) >> 5) as i16;
                     }
                 }
             }

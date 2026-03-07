@@ -37,17 +37,17 @@ pub fn gen_matrix(mode: KyberMode, seed: &[u8; 32], transposed: bool) -> alloc::
 
     let mut a: alloc::vec::Vec<PolyVec> = (0..k).map(|_| PolyVec::new(k)).collect();
 
-    for i in 0..k {
-        for j in 0..k {
+    for (i, ai) in a.iter_mut().enumerate() {
+        for (j, aij) in ai.vec.iter_mut().enumerate() {
             let (si, sj) = if transposed { (i, j) } else { (j, i) };
             let mut state = XofState::absorb(seed, si as u8, sj as u8);
             let mut buf = vec![0u8; gen_nblocks * XOF_BLOCKBYTES];
             state.squeeze(&mut buf);
-            let mut ctr = rej_uniform(&mut a[i].vec[j].coeffs, &buf);
+            let mut ctr = rej_uniform(&mut aij.coeffs, &buf);
             while ctr < N {
                 let mut extra = [0u8; XOF_BLOCKBYTES];
                 state.squeeze(&mut extra);
-                ctr += rej_uniform(&mut a[i].vec[j].coeffs[ctr..], &extra);
+                ctr += rej_uniform(&mut aij.coeffs[ctr..], &extra);
             }
         }
     }
@@ -90,8 +90,8 @@ pub fn keypair_derand(
 
     // pkpv = A * skpv + e
     let mut pkpv = PolyVec::new(k);
-    for i in 0..k {
-        PolyVec::basemul_acc_montgomery(&mut pkpv.vec[i], &a[i], &skpv);
+    for (i, ai) in a.iter().enumerate() {
+        PolyVec::basemul_acc_montgomery(&mut pkpv.vec[i], ai, &skpv);
         pkpv.vec[i].tomont();
     }
     pkpv.add(&pkpv.clone(), &e);
@@ -139,8 +139,8 @@ pub fn enc(mode: KyberMode, ct: &mut [u8], msg: &[u8; 32], pk: &[u8], coins: &[u
 
     // b = A^T * sp
     let mut b = PolyVec::new(k);
-    for i in 0..k {
-        PolyVec::basemul_acc_montgomery(&mut b.vec[i], &at[i], &sp);
+    for (i, ati) in at.iter().enumerate() {
+        PolyVec::basemul_acc_montgomery(&mut b.vec[i], ati, &sp);
     }
 
     // v = pk^T * sp

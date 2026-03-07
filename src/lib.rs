@@ -29,6 +29,7 @@
 //! ```
 
 #![cfg_attr(not(feature = "std"), no_std)]
+#![cfg_attr(not(feature = "simd"), forbid(unsafe_code))]
 
 extern crate alloc;
 
@@ -42,7 +43,11 @@ pub mod params;
 pub mod poly;
 pub mod polyvec;
 pub mod reduce;
+pub mod safe_api;
 pub mod symmetric;
 pub mod verify;
 
 pub use params::{KyberMode, ML_KEM_1024, ML_KEM_512, ML_KEM_768};
+pub use safe_api::{encaps_derand as safe_encaps_derand, MlKemCiphertext, MlKemError, MlKemKeyPair, MlKemSharedSecret};
+#[cfg(feature = "getrandom")]
+pub use safe_api::encaps as safe_encaps;

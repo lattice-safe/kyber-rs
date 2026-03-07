@@ -1,6 +1,6 @@
 [package]
 name = "lattice-kyber"
-version = "0.1.1"
+version = "0.1.2"
 edition = "2021"
 rust-version = "1.70"
 authors = ["lattice-safe contributors"]
@@ -29,7 +29,10 @@ simd = []
 [dependencies]
 sha3 = { version = "0.10", default-features = false }
 subtle = { version = "2", default-features = false }
-zeroize = { version = "1", features = ["alloc"], default-features = false }
+zeroize = { version = "1", features = [
+    "alloc",
+    "derive",
+], default-features = false }
 getrandom = { version = "0.2", optional = true }
 serde = { version = "1", features = ["derive"], optional = true }
 

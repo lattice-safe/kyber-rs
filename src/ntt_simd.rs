@@ -25,10 +25,11 @@ pub fn ntt_simd(r: &mut [i16; N]) {
     #[cfg(target_arch = "aarch64")]
     {
         unsafe { ntt_neon(r) };
-        return;
     }
-    // Scalar fallback
-    crate::ntt::ntt(r);
+    #[cfg(not(any(target_arch = "x86_64", target_arch = "aarch64")))]
+    {
+        crate::ntt::ntt(r);
+    }
 }
 
 /// SIMD-accelerated inverse NTT.
@@ -43,9 +44,11 @@ pub fn invntt_simd(r: &mut [i16; N]) {
     #[cfg(target_arch = "aarch64")]
     {
         unsafe { invntt_neon(r) };
-        return;
     }
-    crate::ntt::invntt(r);
+    #[cfg(not(any(target_arch = "x86_64", target_arch = "aarch64")))]
+    {
+        crate::ntt::invntt(r);
+    }
 }
 
 // ===========================================================================
@@ -103,7 +106,7 @@ mod avx2 {
                 for jj in j..start + len {
                     let t = crate::reduce::fqmul(zeta, r[jj + len]);
                     r[jj + len] = r[jj] - t;
-                    r[jj] = r[jj] + t;
+                    r[jj] += t;
                 }
                 break;
             }
@@ -237,7 +240,7 @@ mod neon {
         while j < start + len {
             let t = crate::reduce::fqmul(zeta, r[j + len]);
             r[j + len] = r[j] - t;
-            r[j] = r[j] + t;
+            r[j] += t;
             j += 1;
         }
     }
@@ -260,7 +263,7 @@ unsafe fn ntt_neon(r: &mut [i16; N]) {
                 for j in start..start + len {
                     let t = fqmul(zeta, r[j + len]);
                     r[j + len] = r[j] - t;
-                    r[j] = r[j] + t;
+                    r[j] += t;
                 }
             }
             start += 2 * len;
@@ -307,7 +310,6 @@ unsafe fn invntt_neon(r: &mut [i16; N]) {
 mod tests {
     use super::*;
     use crate::ntt;
-    use crate::reduce::barrett_reduce;
 
     #[test]
     fn test_simd_ntt_matches_scalar() {

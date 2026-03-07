@@ -10,8 +10,8 @@ use sha3::Sha3_256;
 /// We use a simpler approach: derive seeds via SHA3-256 chain.
 fn derive_seed(state: &mut [u8; 32], extra: u8) {
     let mut h = Sha3_256::new();
-    h.update(&*state);
-    h.update(&[extra]);
+    h.update(state.as_slice());
+    h.update([extra]);
     let result = h.finalize();
     state.copy_from_slice(&result);
 }
@@ -38,10 +38,10 @@ fn run_kat(mode: KyberMode, name: &str) -> String {
 
         let (ct, ss_enc) = encaps_derand(mode, &pk, &enc_coins);
         hasher.update(&ct);
-        hasher.update(&ss_enc);
+        hasher.update(ss_enc);
 
         let ss_dec = decaps(mode, &ct, &sk);
-        hasher.update(&ss_dec);
+        hasher.update(ss_dec);
 
         assert_eq!(
             ss_enc, ss_dec,
@@ -52,10 +52,6 @@ fn run_kat(mode: KyberMode, name: &str) -> String {
 
     let result = hasher.finalize();
     hex::encode(result)
-}
-
-fn hex_encode(bytes: &[u8]) -> String {
-    bytes.iter().map(|b| format!("{:02x}", b)).collect()
 }
 
 mod hex {

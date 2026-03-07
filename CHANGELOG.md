@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.2] — 2026-03-07
+
+### Added
+- `safe_api` module with typed wrappers: `MlKemKeyPair`, `MlKemCiphertext`, `MlKemSharedSecret`
+- `MlKemError` type with `Display`/`Error` implementations
+- `MlKemKeyPair::generate()` — randomized keygen via `getrandom`
+- `safe_encaps()` / `safe_encaps_derand()` — validated encapsulation with length checks
+- `Zeroize` / `ZeroizeOnDrop` on `Poly`, `PolyVec`, `MlKemKeyPair`, `MlKemSharedSecret`
+- `#![forbid(unsafe_code)]` enforced when `simd` feature is disabled
+- CI: MSRV (1.70) check, WASM build, `cargo-deny` dependency audit
+
+### Changed
+- Expanded `SECURITY.md` with caveats, `unsafe` disclosure, and dependency audit
+- Updated README with Safe API examples and feature documentation
+
+### Fixed
+- All 26 clippy warnings (operator precedence, needless range loops, unused imports, etc.)
+- Removed dead `hex_encode` function from KAT tests
+
 ## [0.1.1] — 2026-03-07
 
 ### Added

@@ -27,7 +27,7 @@ pub fn ntt(r: &mut [i16; N]) {
             for j in start..start + len {
                 let t = fqmul(zeta, r[j + len]);
                 r[j + len] = r[j] - t;
-                r[j] = r[j] + t;
+                r[j] += t;
             }
             start += 2 * len;
         }
@@ -56,8 +56,8 @@ pub fn invntt(r: &mut [i16; N]) {
         len <<= 1;
     }
 
-    for j in 0..N {
-        r[j] = fqmul(r[j], f);
+    for coeff in r.iter_mut() {
+        *coeff = fqmul(*coeff, f);
     }
 }
 
