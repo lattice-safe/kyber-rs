@@ -79,40 +79,41 @@ mod avx2 {
     ///
     /// # Safety
     /// Requires the `avx2` target feature to be available at runtime.
-    #[inline(always)]
+    // `#[inline(always)]` is not permitted alongside `#[target_feature]` on
+    // stable Rust; use the `#[inline]` hint instead.
+    #[inline]
     #[target_feature(enable = "avx2")]
     pub(super) unsafe fn montgomery_reduce_avx2(a_lo: __m256i, a_hi: __m256i) -> __m256i {
-        unsafe {
-            let qinv = _mm256_set1_epi16(QINV);
-            let q = _mm256_set1_epi16(Q);
-            // t = a_lo * QINV (low 16 bits)
-            let t = _mm256_mullo_epi16(a_lo, qinv);
-            // t * Q (high 16 bits)
-            let tq_hi = _mm256_mulhi_epi16(t, q);
-            // result = a_hi - tq_hi
-            _mm256_sub_epi16(a_hi, tq_hi)
-        }
+        // Intrinsics are safe to call within a matching `#[target_feature]` fn,
+        // so no inner `unsafe` block is needed here.
+        let qinv = _mm256_set1_epi16(QINV);
+        let q = _mm256_set1_epi16(Q);
+        // t = a_lo * QINV (low 16 bits)
+        let t = _mm256_mullo_epi16(a_lo, qinv);
+        // t * Q (high 16 bits)
+        let tq_hi = _mm256_mulhi_epi16(t, q);
+        // result = a_hi - tq_hi
+        _mm256_sub_epi16(a_hi, tq_hi)
     }
 
     /// Vectorized fqmul: montgomery_reduce(a * b)
     ///
     /// # Safety
     /// Requires the `avx2` target feature to be available at runtime.
-    #[inline(always)]
+    #[inline]
     #[target_feature(enable = "avx2")]
     pub(super) unsafe fn fqmul_avx2(a: __m256i, b: __m256i) -> __m256i {
-        unsafe {
-            let lo = _mm256_mullo_epi16(a, b);
-            let hi = _mm256_mulhi_epi16(a, b);
-            montgomery_reduce_avx2(lo, hi)
-        }
+        let lo = _mm256_mullo_epi16(a, b);
+        let hi = _mm256_mulhi_epi16(a, b);
+        // SAFETY: caller guarantees avx2; both fns share the target feature.
+        unsafe { montgomery_reduce_avx2(lo, hi) }
     }
 
     /// AVX2 NTT butterfly: process 16 coefficients at once
     ///
     /// # Safety
     /// Requires the `avx2` target feature; `start + 2*len <= 256`.
-    #[inline(always)]
+    #[inline]
     #[target_feature(enable = "avx2")]
     pub(super) unsafe fn butterfly_avx2(r: &mut [i16; 256], start: usize, len: usize, zeta: i16) {
         unsafe {

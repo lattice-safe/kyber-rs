@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.1] — 2026-07-20
+
+### Fixed
+- **`simd` feature failed to compile on x86_64.** The AVX2 helpers combined `#[inline(always)]` with `#[target_feature]`, which is a hard error on stable Rust, and carried an inner `unsafe` block that is redundant inside a `#[target_feature]` function. (The bug was invisible on aarch64, where the AVX2 module is `#[cfg]`-compiled out.) Default builds were unaffected — only `--features simd` on x86_64.
+- **CI dependency audit** — updated `deny.toml` to the cargo-deny ≥ 0.18 schema (the old one could not parse `edition = "2024"`) and bumped `cargo-deny-action` v1 → v2.
+
 ## [0.2.0] — 2026-07-20
 
 ### Changed
