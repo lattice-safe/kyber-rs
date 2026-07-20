@@ -1,6 +1,6 @@
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use criterion::{Criterion, black_box, criterion_group, criterion_main};
 use kyber::kem::{decaps, encaps_derand, keypair_derand};
-use kyber::params::{KyberMode, ML_KEM_1024, ML_KEM_512, ML_KEM_768};
+use kyber::params::{KyberMode, ML_KEM_512, ML_KEM_768, ML_KEM_1024};
 
 fn bench_mode(c: &mut Criterion, mode: KyberMode, name: &str) {
     let coins = [0u8; 64];

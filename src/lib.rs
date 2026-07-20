@@ -47,7 +47,10 @@ pub mod safe_api;
 pub mod symmetric;
 pub mod verify;
 
-pub use params::{KyberMode, ML_KEM_1024, ML_KEM_512, ML_KEM_768};
-pub use safe_api::{encaps_derand as safe_encaps_derand, MlKemCiphertext, MlKemError, MlKemKeyPair, MlKemSharedSecret};
+pub use params::{KyberMode, ML_KEM_512, ML_KEM_768, ML_KEM_1024};
 #[cfg(feature = "getrandom")]
 pub use safe_api::encaps as safe_encaps;
+pub use safe_api::{
+    MlKemCiphertext, MlKemError, MlKemKeyPair, MlKemSharedSecret,
+    encaps_derand as safe_encaps_derand,
+};

@@ -5,13 +5,14 @@ use crate::params::{KyberMode, SSBYTES, SYMBYTES};
 use crate::symmetric;
 use crate::verify as ct_verify;
 use alloc::vec;
+use zeroize::Zeroize;
 
 /// Generate ML-KEM key pair (deterministic).
 pub fn keypair_derand(
     mode: KyberMode,
     coins: &[u8; 64],
 ) -> (alloc::vec::Vec<u8>, alloc::vec::Vec<u8>) {
-    let (pk, sk_cpa) = indcpa::keypair_derand(mode, coins[..32].try_into().unwrap());
+    let (pk, mut sk_cpa) = indcpa::keypair_derand(mode, coins[..32].try_into().unwrap());
 
     // sk = sk_cpa || pk || H(pk) || z
     let mut sk = vec![0u8; mode.secret_key_bytes()];
@@ -19,6 +20,7 @@ pub fn keypair_derand(
     let pk_len = mode.public_key_bytes();
 
     sk[..cpa_len].copy_from_slice(&sk_cpa);
+    sk_cpa.zeroize();
     sk[cpa_len..cpa_len + pk_len].copy_from_slice(&pk);
 
     let mut h_pk = [0u8; 32];
@@ -55,6 +57,10 @@ pub fn encaps_derand(
 
     let mut ss = [0u8; SSBYTES];
     ss.copy_from_slice(&kr[..32]);
+
+    // buf held m (a copy of coins); kr held (K, r). Wipe both.
+    buf.zeroize();
+    kr.zeroize();
     (ct, ss)
 }
 
@@ -100,5 +106,12 @@ pub fn decaps(mode: KyberMode, ct: &[u8], sk: &[u8]) -> [u8; SSBYTES] {
 
     // Constant-time select
     ct_verify::cmov(&mut ss, &ss_reject, fail);
+
+    // Wipe all secret intermediates: m' (decrypted message), the G-buffer
+    // (m' || H(pk)), the derived (K', r'), and the implicit-rejection secret.
+    m.zeroize();
+    buf.zeroize();
+    kr.zeroize();
+    ss_reject.zeroize();
     ss
 }

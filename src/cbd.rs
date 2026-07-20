@@ -44,3 +44,34 @@ pub fn poly_cbd(r: &mut [i16; N], buf: &[u8], eta: usize) {
         _ => panic!("unsupported eta: {}", eta),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn cbd2_coefficients_in_range() {
+        // eta=2 needs 4*N/8 = 128 bytes; all coefficients must lie in [-2, 2].
+        let buf: alloc::vec::Vec<u8> = (0..128u32).map(|i| (i * 37 + 11) as u8).collect();
+        let mut r = [0i16; N];
+        poly_cbd(&mut r, &buf, 2);
+        assert!(r.iter().all(|&c| (-2..=2).contains(&c)));
+    }
+
+    #[test]
+    fn cbd3_coefficients_in_range() {
+        // eta=3 needs 3*N/4 = 192 bytes; all coefficients must lie in [-3, 3].
+        let buf: alloc::vec::Vec<u8> = (0..192u32).map(|i| (i * 53 + 7) as u8).collect();
+        let mut r = [0i16; N];
+        poly_cbd(&mut r, &buf, 3);
+        assert!(r.iter().all(|&c| (-3..=3).contains(&c)));
+    }
+
+    #[test]
+    #[should_panic(expected = "unsupported eta")]
+    fn poly_cbd_rejects_unsupported_eta() {
+        let buf = [0u8; 256];
+        let mut r = [0i16; N];
+        poly_cbd(&mut r, &buf, 5);
+    }
+}
