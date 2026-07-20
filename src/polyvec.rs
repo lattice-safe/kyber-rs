@@ -84,8 +84,8 @@ impl PolyVec {
                         for (m, tm) in t.iter_mut().enumerate() {
                             let mut u = self.vec[i].coeffs[8 * j + m];
                             u += (u >> 15) & (Q32 as i16);
-                            *tm =
-                                (((((u as u32) << 11) + Q32 as u32 / 2) / Q32 as u32) & 0x7FF) as u16;
+                            *tm = (((((u as u32) << 11) + Q32 as u32 / 2) / Q32 as u32) & 0x7FF)
+                                as u16;
                         }
                         r[idx] = t[0] as u8;
                         r[idx + 1] = ((t[0] >> 8) | (t[1] << 3)) as u8;
@@ -111,8 +111,8 @@ impl PolyVec {
                         for (m, tm) in t.iter_mut().enumerate() {
                             let mut u = self.vec[i].coeffs[4 * j + m];
                             u += (u >> 15) & (Q32 as i16);
-                            *tm =
-                                (((((u as u32) << 10) + Q32 as u32 / 2) / Q32 as u32) & 0x3FF) as u16;
+                            *tm = (((((u as u32) << 10) + Q32 as u32 / 2) / Q32 as u32) & 0x3FF)
+                                as u16;
                         }
                         r[idx] = t[0] as u8;
                         r[idx + 1] = ((t[0] >> 8) | (t[1] << 2)) as u8;

@@ -3,7 +3,7 @@
 //! Run with: cargo run --example keygen_encaps
 
 use kyber::kem::{decaps, encaps_derand, keypair_derand};
-use kyber::params::{KyberMode, ML_KEM_1024, ML_KEM_512, ML_KEM_768};
+use kyber::params::{KyberMode, ML_KEM_512, ML_KEM_768, ML_KEM_1024};
 
 fn demo(mode: KyberMode, name: &str) {
     // In production, use a CSPRNG for all coins

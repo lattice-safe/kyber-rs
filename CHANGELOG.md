@@ -2,6 +2,28 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.0] — 2026-07-20
+
+### Changed
+- **Upgraded to the current RustCrypto / rust-random primitive stack:**
+  - `sha3` 0.10 → **0.12** (SHAKE128/256 moved to the new **`shake` 0.1** crate; SHA3-256/512 stay in `sha3`)
+  - `getrandom` 0.2 → **0.4** (`getrandom::getrandom()` → `getrandom::fill()`)
+  - `zeroize` now enabled via the `zeroize_derive` feature (the `derive` alias was removed upstream)
+- **MSRV raised 1.70 → 1.85** and **edition 2021 → 2024** (required by the new `digest` 0.11 / `sha3` 0.12 stack). This is a breaking change for consumers on older toolchains.
+- Removed the unused `subtle` dependency; constant-time comparison and conditional move remain implemented in-crate (`verify.rs`).
+- The `simd` feature is now **wired into `Poly::ntt` / `Poly::invntt_tomont`** (previously the `ntt_simd` module was compiled but never used). The SIMD (AVX2/NEON) path is cross-validated end-to-end by the KAT suite under `--features simd`.
+
+### Security
+- **Zeroize secret intermediates** that previously lingered on the stack/heap: the decrypted message `m'` and derived `(K', r')` in `kem::decaps`, the message copy and `(K, r)` in `kem::encaps_derand`, the noise seed / G-buffer in `indcpa::keypair_derand`, the IND-CPA secret key after packing, and the PRF output in `Poly::getnoise`.
+- **Added the FIPS 203 §7.2 modulus check** to `safe_api::encaps_derand`: an encapsulation key whose packed coefficients are not all in `[0, q)` is now rejected with `MlKemError::InvalidPublicKey`.
+- `verify::verify` no longer relies on a `debug_assert` for length: a length mismatch is treated as "not equal" instead of risking an out-of-bounds read in release builds.
+
+### Added
+- `MlKemError::InvalidPublicKey` and `MlKemError::RandomnessFailure` variants.
+- `tests/safe_api_tests.rs` — validation and Fujisaki–Okamoto robustness tests (wrong-length inputs, modulus check, deterministic implicit rejection).
+- Edition-2024-correct `unsafe` blocks throughout `ntt_simd.rs` (explicit `unsafe {}` inside `unsafe fn`), with `# Safety` docs on each intrinsic wrapper.
+- **Test coverage raised to ~99% lines / 99% regions** (`cargo llvm-cov --all-features`): unit tests for `symmetric` (SHAKE256 known-answer, PRF/rkprf), `verify` (constant-time compare incl. length mismatch, `cmov`), `cbd` (coefficient ranges + unsupported-eta panic), and `safe_api` (`Display` for every error, accessors, `Zeroize`, OS-entropy `generate`/`encaps`, and serde round-trip). The only uncovered code is genuinely unreachable (`unreachable!()` guards, the multiple-of-8 SIMD remainder loop, and OS-RNG-failure branches). Remaining gaps are covered on Linux CI via `cargo-tarpaulin` → Codecov.
+
 ## [0.1.2] — 2026-03-07
 
 ### Added

@@ -26,12 +26,18 @@ impl Poly {
 
     /// Apply NTT followed by Barrett reduction (matches C poly_ntt).
     pub fn ntt(&mut self) {
+        #[cfg(feature = "simd")]
+        crate::ntt_simd::ntt_simd(&mut self.coeffs);
+        #[cfg(not(feature = "simd"))]
         ntt::ntt(&mut self.coeffs);
         self.reduce();
     }
 
     /// Apply inverse NTT.
     pub fn invntt_tomont(&mut self) {
+        #[cfg(feature = "simd")]
+        crate::ntt_simd::invntt_simd(&mut self.coeffs);
+        #[cfg(not(feature = "simd"))]
         ntt::invntt(&mut self.coeffs);
     }
 
@@ -89,6 +95,8 @@ impl Poly {
         symmetric::prf(&mut buf, seed, nonce);
         let mut p = Poly::new();
         cbd::poly_cbd(&mut p.coeffs, &buf, eta);
+        // The PRF output determines the secret noise; wipe it before returning.
+        buf.zeroize();
         p
     }
 

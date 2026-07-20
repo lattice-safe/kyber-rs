@@ -19,8 +19,10 @@ Part of the [lattice-safe](https://github.com/lattice-safe) cryptographic suite.
 
 ```toml
 [dependencies]
-lattice-kyber = "0.1"
+lattice-kyber = "0.2"
 ```
+
+> **MSRV:** Rust 1.85 (edition 2024), matching the current `sha3` 0.12 / `getrandom` 0.4 primitive stack.
 
 ### Safe API (recommended)
 
@@ -60,7 +62,7 @@ assert_eq!(ss_sender, ss_receiver);
 
 ```toml
 [dependencies]
-lattice-kyber = { version = "0.1", features = ["getrandom"] }
+lattice-kyber = { version = "0.2", features = ["getrandom"] }
 ```
 
 ```rust
@@ -131,6 +133,20 @@ Apple M-series, `cargo bench` (Criterion) vs C reference (`-O3`):
 cargo run --example keygen_encaps   # Key generation + encapsulation demo
 cargo run --example serialize       # Alice-Bob key exchange flow
 ```
+
+## Testing
+
+```bash
+cargo test --all-features          # unit + integration + KAT + doctests
+cargo test --features simd         # exercise the AVX2/NEON NTT path end-to-end
+```
+
+Line/region coverage is **~99%** (`cargo llvm-cov --all-features`). The suite
+includes KAT cross-validation over 100 iterations × 3 modes, FIPS 203 input
+validation and Fujisaki–Okamoto robustness tests, constant-time comparison
+tests, and SHAKE256 known-answer vectors. The remaining uncovered lines are
+unreachable guards (`unreachable!()`, the multiple-of-8 SIMD remainder loop,
+and OS-RNG-failure branches).
 
 ## Fuzzing
 

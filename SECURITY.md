@@ -38,7 +38,7 @@ This crate implements ML-KEM (FIPS 203) with the following security measures:
 
 - **No FIPS 140-3 / CMVP certification** — this is a research-quality implementation, not a certified cryptographic module
 - **No formal verification** — the implementation has not been subjected to formal methods analysis
-- **Limited side-channel hardening** — while core operations use constant-time primitives (`subtle` crate), the SIMD paths (`ntt_simd.rs`) use `unsafe` and platform-specific intrinsics that have not been independently verified for timing leakage
+- **Limited side-channel hardening** — while decapsulation uses in-crate constant-time comparison and conditional move (`verify.rs`), and secret intermediates are zeroized after use, the SIMD paths (`ntt_simd.rs`) use `unsafe` and platform-specific intrinsics that have not been independently verified for timing leakage. The SIMD path is cross-validated against the scalar reference for *correctness* (unit tests plus the KAT suite under `--features simd`), not for timing.
 - **No hardware isolation** — this is a software-only implementation with no TEE/enclave boundaries
 
 ## SIMD & `unsafe` Usage
@@ -53,11 +53,14 @@ All `unsafe` usage is confined to `ntt_simd.rs` and is gated behind `#[cfg(featu
 
 | Crate | Version | Purpose | Audit Status |
 |-------|---------|---------|-------------|
-| `sha3` | 0.10 | SHAKE/SHA3 primitives | RustCrypto — widely reviewed |
-| `subtle` | 2 | Constant-time operations | RustCrypto — widely reviewed |
+| `sha3` | 0.12 | SHA3-256/512 primitives | RustCrypto — widely reviewed |
+| `shake` | 0.1 | SHAKE128/256 XOF (split out of `sha3` in 0.12) | RustCrypto — widely reviewed |
 | `zeroize` | 1 | Memory zeroization | RustCrypto — widely reviewed |
-| `getrandom` | 0.2 | OS entropy (optional) | RustCrypto — widely reviewed |
+| `getrandom` | 0.4 | OS entropy (optional) | rust-random — widely reviewed |
 | `serde` | 1 | Serialization (optional) | Widely reviewed |
+
+Constant-time comparison / conditional move are implemented in-crate (`verify.rs`);
+the `subtle` crate is no longer a dependency.
 
 ## Scope
 

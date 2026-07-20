@@ -1,8 +1,8 @@
 [package]
 name = "lattice-kyber"
-version = "0.1.2"
-edition = "2021"
-rust-version = "1.70"
+version = "0.2.0"
+edition = "2024"
+rust-version = "1.85"
 authors = ["lattice-safe contributors"]
 description = "Pure Rust implementation of ML-KEM (FIPS 203) / CRYSTALS-Kyber post-quantum key encapsulation mechanism"
 license = "MIT"
@@ -27,13 +27,13 @@ serde = ["dep:serde"]
 simd = []
 
 [dependencies]
-sha3 = { version = "0.10", default-features = false }
-subtle = { version = "2", default-features = false }
+sha3 = { version = "0.12", default-features = false }
+shake = { version = "0.1", default-features = false }
 zeroize = { version = "1", features = [
     "alloc",
-    "derive",
+    "zeroize_derive",
 ], default-features = false }
-getrandom = { version = "0.2", optional = true }
+getrandom = { version = "0.4", optional = true }
 serde = { version = "1", features = ["derive"], optional = true }
 
 [lib]
@@ -42,6 +42,7 @@ path = "src/lib.rs"
 
 [dev-dependencies]
 criterion = { version = "0.5", features = ["html_reports"] }
+serde_json = "1"
 
 [[bench]]
 name = "kyber_bench"

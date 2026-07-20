@@ -2,7 +2,7 @@
 //! keygen/encaps/decaps iterations and compares with C reference golden hashes.
 
 use kyber::kem::{decaps, encaps_derand, keypair_derand};
-use kyber::params::{KyberMode, ML_KEM_1024, ML_KEM_512, ML_KEM_768};
+use kyber::params::{KyberMode, ML_KEM_512, ML_KEM_768, ML_KEM_1024};
 use sha3::Digest;
 use sha3::Sha3_256;
 

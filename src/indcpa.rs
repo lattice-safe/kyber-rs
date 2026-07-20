@@ -5,6 +5,7 @@ use crate::poly::Poly;
 use crate::polyvec::PolyVec;
 use crate::symmetric::{self, XofState};
 use alloc::vec;
+use zeroize::Zeroize;
 
 /// Rejection sampling: sample uniform mod q from XOF output.
 fn rej_uniform(r: &mut [i16], buf: &[u8]) -> usize {
@@ -68,7 +69,7 @@ pub fn keypair_derand(
     seed_input[32] = k as u8;
     symmetric::hash_g(&mut buf, &seed_input);
     let publicseed: [u8; 32] = buf[..32].try_into().unwrap();
-    let noiseseed: [u8; 32] = buf[32..64].try_into().unwrap();
+    let mut noiseseed: [u8; 32] = buf[32..64].try_into().unwrap();
 
     let a = gen_matrix(mode, &publicseed, false);
 
@@ -84,6 +85,11 @@ pub fn keypair_derand(
         e.vec[i] = Poly::getnoise(&noiseseed, nonce, mode.eta1());
         nonce += 1;
     }
+
+    // The noise seed and hash buffers derive the secret key; wipe them.
+    noiseseed.zeroize();
+    buf.zeroize();
+    seed_input.zeroize();
 
     skpv.ntt();
     e.ntt();
