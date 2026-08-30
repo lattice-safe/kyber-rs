@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.2] — 2026-08-30
+
+### Security
+- **KyberSlash-class timing side-channel (CWE-208) in `Compress_d` on the decapsulation path.** `Poly::tomsg` (KyberSlash-1) and `Poly::compress` / `PolyVec::compress` (KyberSlash-2, via FO re-encryption) divided secret-dependent coefficients by q = 3329. On targets without a hardware divider (Cortex-M0/M0+ `thumbv6m`, RISC-V without the M extension) — and at `opt-level=0` on every target — LLVM lowers `/ 3329` to the variable-time software routine `__aeabi_uidiv` / `__udivsi3`, whose latency depends on the secret dividend. The divisions are replaced with the standard post-KyberSlash constant-time multiply-shift per d ∈ {1, 4, 5, 10, 11} (same values, verified exhaustively and by the KAT suite). Mainstream targets (x86-64, aarch64, thumbv7em, wasm32) at `--release` already compiled the constant divisor to a multiply-shift and were not affected. Reported by Patryk under coordinated disclosure; same class as RUSTSEC-2023-0079.
+- **Secret-sign-dependent branch in the compress/tomsg "freeze" step on thumbv6m.** LLVM lowered the branchless mask `u += (u >> 15) & Q` into a compare-and-branch on the (secret) coefficient sign on targets without conditional select. The mask is now computed through an optimization barrier (`core::hint::black_box`) in `reduce::freeze`, verified branch-free in the emitted assembly.
+- **Secret-dependent branch in the FO re-encryption check `verify::verify` on thumbv6m.** When inlined into `kem::decaps`, LLVM lowered the `-(r as i64) >> 63` nonzero-fold into a `cmp r, #0; beq` on the accumulated ciphertext difference — a taken/not-taken branch revealing whether the re-encryption matched the ciphertext, i.e. a plaintext-checking oracle (the exact signal implicit rejection is meant to hide). The fold is rewritten as a comparison-free shift/OR sequence behind a `black_box`; the emitted `decaps` now computes the fail bit with `lsrs`/`orrs`/`ands` and no branch on the difference. This was found during the same audit as the KyberSlash fix and is a distinct, arguably more serious instance of the same CWE-208 class.
+- **Secret-sign-dependent branch in the secret-key serializer `Poly::tobytes`.** The `if (t as i16) < 0` conditional add-q ran on secret-key coefficients (16 + 8 branches on thumbv6m, in the key-generation path). Replaced with the branchless `reduce::freeze`.
+
+### Added
+- `scripts/check_thumbv6m_ct.sh` + CI job: emits `thumbv6m-none-eabi` assembly and fails if any secret-processing function contains a software-division call, and if any kyber function branches on the sign of a coefficient (a global `bpl`/`bmi` assertion that is robust to inlining, covering `tomsg`, `compress`, and `tobytes`).
+- Exhaustive regression tests pinning `tomsg`/`compress` (all d values) to the division-based reference formula for every representative in (-q, q), `reduce::freeze` to `rem_euclid`, and `verify` returning exactly 1 for any single-bit difference.
+
 ## [0.2.1] — 2026-07-20
 
 ### Fixed

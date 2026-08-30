@@ -3,7 +3,7 @@
 use crate::cbd;
 use crate::ntt;
 use crate::params::{KyberMode, N, Q32};
-use crate::reduce::{barrett_reduce, montgomery_reduce};
+use crate::reduce::{barrett_reduce, freeze, montgomery_reduce};
 use crate::symmetric;
 use zeroize::{Zeroize, ZeroizeOnDrop};
 
@@ -103,14 +103,12 @@ impl Poly {
     /// Serialize polynomial to bytes (full 12-bit packed).
     pub fn tobytes(&self, r: &mut [u8]) {
         for i in 0..N / 2 {
-            let mut t0 = self.coeffs[2 * i] as u16;
-            let mut t1 = self.coeffs[2 * i + 1] as u16;
-            if (t0 as i16) < 0 {
-                t0 = t0.wrapping_add(Q32 as u16);
-            }
-            if (t1 as i16) < 0 {
-                t1 = t1.wrapping_add(Q32 as u16);
-            }
+            // Branchless map to [0, q): the coefficients are secret-key
+            // material, so the conditional add-q must not lower to a
+            // sign-dependent branch (CWE-208) on targets whose branches are
+            // not constant time.
+            let t0 = freeze(self.coeffs[2 * i]);
+            let t1 = freeze(self.coeffs[2 * i + 1]);
             r[3 * i] = t0 as u8;
             r[3 * i + 1] = ((t0 >> 8) | (t1 << 4)) as u8;
             r[3 * i + 2] = (t1 >> 4) as u8;
@@ -146,11 +144,11 @@ impl Poly {
         for (i, byte) in msg.iter_mut().enumerate() {
             *byte = 0;
             for j in 0..8 {
-                let mut t = self.coeffs[8 * i + j];
-                // Freeze
-                t += (t >> 15) & (Q32 as i16);
-                // (t << 1) + Q/2) / Q & 1
-                let val = ((((t as u16) << 1).wrapping_add(Q32 as u16 / 2)) / (Q32 as u16)) & 1;
+                let t = freeze(self.coeffs[8 * i + j]);
+                // ((t << 1) + Q/2) / Q & 1, as a division-free multiply-shift:
+                // secret coefficients must never feed a divide (KyberSlash).
+                let d0 = ((u32::from(t) << 1) + 1665).wrapping_mul(80635);
+                let val = (d0 >> 28) & 1;
                 *byte |= (val as u8) << j;
             }
         }
@@ -164,9 +162,11 @@ impl Poly {
                 // d=4
                 for i in 0..N / 8 {
                     for (j, tj) in t.iter_mut().enumerate() {
-                        let mut u = self.coeffs[8 * i + j];
-                        u += (u >> 15) & (Q32 as i16);
-                        *tj = (((((u as u32) << 4) + Q32 as u32 / 2) / Q32 as u32) & 15) as u8;
+                        let u = freeze(self.coeffs[8 * i + j]);
+                        // (((u << 4) + Q/2) / Q) & 15, division-free; the
+                        // product wraps mod 2^32 without affecting bits 28..31.
+                        let d0 = ((u32::from(u) << 4) + 1665).wrapping_mul(80635);
+                        *tj = ((d0 >> 28) & 15) as u8;
                     }
                     r[4 * i] = t[0] | (t[1] << 4);
                     r[4 * i + 1] = t[2] | (t[3] << 4);
@@ -178,9 +178,11 @@ impl Poly {
                 // d=5
                 for i in 0..N / 8 {
                     for (j, tj) in t.iter_mut().enumerate() {
-                        let mut u = self.coeffs[8 * i + j];
-                        u += (u >> 15) & (Q32 as i16);
-                        *tj = (((((u as u32) << 5) + Q32 as u32 / 2) / Q32 as u32) & 31) as u8;
+                        let u = freeze(self.coeffs[8 * i + j]);
+                        // (((u << 5) + Q/2) / Q) & 31, division-free; the
+                        // product wraps mod 2^32 without affecting bits 27..31.
+                        let d0 = ((u32::from(u) << 5) + 1664).wrapping_mul(40318);
+                        *tj = ((d0 >> 27) & 31) as u8;
                     }
                     r[5 * i] = t[0] | (t[1] << 5);
                     r[5 * i + 1] = (t[1] >> 3) | (t[2] << 2) | (t[3] << 7);
@@ -222,5 +224,52 @@ impl Poly {
             _ => unreachable!(),
         }
         p
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Reference Compress_d via integer division (the pre-KyberSlash
+    /// formula). Test-only: the division here runs on public loop counters.
+    fn compress_div(u: u32, d: u32) -> u32 {
+        (((u << d) + Q32 as u32 / 2) / Q32 as u32) & ((1u32 << d) - 1)
+    }
+
+    #[test]
+    fn tomsg_matches_division_exhaustive() {
+        let mut msg = [0u8; 32];
+        let mut p = Poly::new();
+        for t in -(Q32 as i16 - 1)..Q32 as i16 {
+            p.coeffs[0] = t;
+            p.tomsg(&mut msg);
+            let frozen = (t as i32).rem_euclid(Q32) as u32;
+            assert_eq!(u32::from(msg[0] & 1), compress_div(frozen, 1), "t = {t}");
+        }
+    }
+
+    #[test]
+    fn compress_d4_matches_division_exhaustive() {
+        let mut r = [0u8; 128];
+        let mut p = Poly::new();
+        for t in -(Q32 as i16 - 1)..Q32 as i16 {
+            p.coeffs[0] = t;
+            p.compress(&mut r, KyberMode::Kyber768);
+            let frozen = (t as i32).rem_euclid(Q32) as u32;
+            assert_eq!(u32::from(r[0] & 15), compress_div(frozen, 4), "t = {t}");
+        }
+    }
+
+    #[test]
+    fn compress_d5_matches_division_exhaustive() {
+        let mut r = [0u8; 160];
+        let mut p = Poly::new();
+        for t in -(Q32 as i16 - 1)..Q32 as i16 {
+            p.coeffs[0] = t;
+            p.compress(&mut r, KyberMode::Kyber1024);
+            let frozen = (t as i32).rem_euclid(Q32) as u32;
+            assert_eq!(u32::from(r[0] & 31), compress_div(frozen, 5), "t = {t}");
+        }
     }
 }

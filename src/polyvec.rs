@@ -2,6 +2,7 @@
 
 use crate::params::{KyberMode, N, POLYBYTES, Q32};
 use crate::poly::Poly;
+use crate::reduce::freeze;
 use alloc::vec::Vec;
 use zeroize::Zeroize;
 
@@ -82,10 +83,12 @@ impl PolyVec {
                     for j in 0..N / 8 {
                         let mut t = [0u16; 8];
                         for (m, tm) in t.iter_mut().enumerate() {
-                            let mut u = self.vec[i].coeffs[8 * j + m];
-                            u += (u >> 15) & (Q32 as i16);
-                            *tm = (((((u as u32) << 11) + Q32 as u32 / 2) / Q32 as u32) & 0x7FF)
-                                as u16;
+                            let u = freeze(self.vec[i].coeffs[8 * j + m]);
+                            // (((u << 11) + Q/2) / Q) & 0x7FF, division-free:
+                            // secret coefficients must never feed a divide
+                            // (KyberSlash).
+                            let d0 = ((u64::from(u) << 11) + 1664) * 645084;
+                            *tm = ((d0 >> 31) & 0x7FF) as u16;
                         }
                         r[idx] = t[0] as u8;
                         r[idx + 1] = ((t[0] >> 8) | (t[1] << 3)) as u8;
@@ -109,10 +112,12 @@ impl PolyVec {
                     for j in 0..N / 4 {
                         let mut t = [0u16; 4];
                         for (m, tm) in t.iter_mut().enumerate() {
-                            let mut u = self.vec[i].coeffs[4 * j + m];
-                            u += (u >> 15) & (Q32 as i16);
-                            *tm = (((((u as u32) << 10) + Q32 as u32 / 2) / Q32 as u32) & 0x3FF)
-                                as u16;
+                            let u = freeze(self.vec[i].coeffs[4 * j + m]);
+                            // (((u << 10) + Q/2) / Q) & 0x3FF, division-free:
+                            // secret coefficients must never feed a divide
+                            // (KyberSlash).
+                            let d0 = ((u64::from(u) << 10) + 1665) * 1290167;
+                            *tm = ((d0 >> 32) & 0x3FF) as u16;
                         }
                         r[idx] = t[0] as u8;
                         r[idx + 1] = ((t[0] >> 8) | (t[1] << 2)) as u8;
@@ -187,5 +192,44 @@ impl PolyVec {
             _ => unreachable!(),
         }
         pv
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Reference Compress_d via integer division (the pre-KyberSlash
+    /// formula). Test-only: the division here runs on public loop counters.
+    fn compress_div(u: u32, d: u32) -> u32 {
+        (((u << d) + Q32 as u32 / 2) / Q32 as u32) & ((1u32 << d) - 1)
+    }
+
+    #[test]
+    fn compress_d10_matches_division_exhaustive() {
+        let mode = KyberMode::Kyber768;
+        let mut r = alloc::vec![0u8; mode.polyvec_compressed_bytes()];
+        let mut pv = PolyVec::new(mode.k());
+        for t in -(Q32 as i16 - 1)..Q32 as i16 {
+            pv.vec[0].coeffs[0] = t;
+            pv.compress(&mut r, mode);
+            let frozen = (t as i32).rem_euclid(Q32) as u32;
+            let got = u32::from(r[0]) | ((u32::from(r[1]) & 0x3) << 8);
+            assert_eq!(got, compress_div(frozen, 10), "t = {t}");
+        }
+    }
+
+    #[test]
+    fn compress_d11_matches_division_exhaustive() {
+        let mode = KyberMode::Kyber1024;
+        let mut r = alloc::vec![0u8; mode.polyvec_compressed_bytes()];
+        let mut pv = PolyVec::new(mode.k());
+        for t in -(Q32 as i16 - 1)..Q32 as i16 {
+            pv.vec[0].coeffs[0] = t;
+            pv.compress(&mut r, mode);
+            let frozen = (t as i32).rem_euclid(Q32) as u32;
+            let got = u32::from(r[0]) | ((u32::from(r[1]) & 0x7) << 8);
+            assert_eq!(got, compress_div(frozen, 11), "t = {t}");
+        }
     }
 }
