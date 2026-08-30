@@ -103,14 +103,12 @@ impl Poly {
     /// Serialize polynomial to bytes (full 12-bit packed).
     pub fn tobytes(&self, r: &mut [u8]) {
         for i in 0..N / 2 {
-            let mut t0 = self.coeffs[2 * i] as u16;
-            let mut t1 = self.coeffs[2 * i + 1] as u16;
-            if (t0 as i16) < 0 {
-                t0 = t0.wrapping_add(Q32 as u16);
-            }
-            if (t1 as i16) < 0 {
-                t1 = t1.wrapping_add(Q32 as u16);
-            }
+            // Branchless map to [0, q): the coefficients are secret-key
+            // material, so the conditional add-q must not lower to a
+            // sign-dependent branch (CWE-208) on targets whose branches are
+            // not constant time.
+            let t0 = freeze(self.coeffs[2 * i]);
+            let t1 = freeze(self.coeffs[2 * i + 1]);
             r[3 * i] = t0 as u8;
             r[3 * i + 1] = ((t0 >> 8) | (t1 << 4)) as u8;
             r[3 * i + 2] = (t1 >> 4) as u8;
