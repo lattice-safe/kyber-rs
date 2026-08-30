@@ -29,6 +29,7 @@ This crate implements ML-KEM (FIPS 203) with the following security measures:
 - **Zeroization** — secret key material (`Poly`, `PolyVec`, `MlKemKeyPair`, `MlKemSharedSecret`) is zeroized on drop via the `zeroize` crate
 - **`forbid(unsafe_code)`** — enforced when the `simd` feature is disabled; no unsafe code in scalar paths
 - **Barrett & Montgomery reduction** — side-channel resistant modular arithmetic
+- **Division-free `Compress_d`** — `tomsg`/`compress` use constant-time multiply-shift instead of division by q, so secret coefficients never reach a variable-time hardware or software divide (e.g. `__aeabi_uidiv` on Cortex-M0 or M-less RISC-V; KyberSlash class, CWE-208). The conditional-add-q "freeze" is a branchless mask held in place with an optimization barrier. Both properties are enforced in CI by an assembly scan on `thumbv6m-none-eabi`.
 - **Bit-for-bit parity** with the [pq-crystals/kyber](https://github.com/pq-crystals/kyber) C reference
 - **KAT cross-validation** — 100 iterations × 3 security levels verified against C reference golden hashes
 

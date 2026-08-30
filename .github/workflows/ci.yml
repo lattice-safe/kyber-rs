@@ -48,6 +48,16 @@ jobs:
           targets: wasm32-unknown-unknown
       - run: cargo build --target wasm32-unknown-unknown --no-default-features
 
+  thumbv6m-ct:
+    name: Constant-time check (thumbv6m)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: thumbv6m-none-eabi
+      - run: ./scripts/check_thumbv6m_ct.sh
+
   clippy:
     name: Clippy
     runs-on: ubuntu-latest

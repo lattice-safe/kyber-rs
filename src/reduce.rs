@@ -16,6 +16,19 @@ pub fn fqmul(a: i16, b: i16) -> i16 {
     montgomery_reduce((a as i32) * (b as i32))
 }
 
+/// Map a centered representative in (-q, q) to [0, q) by conditionally
+/// adding q via a branchless sign mask.
+///
+/// The optimization barrier (`black_box`) keeps the compiler from lowering
+/// the mask back into a secret-dependent branch on targets without
+/// conditional-select support (e.g. Cortex-M0/thumbv6m), where a
+/// taken/not-taken branch on a secret coefficient's sign is a timing signal.
+#[inline]
+pub fn freeze(a: i16) -> u16 {
+    let mask = core::hint::black_box((a >> 15) & (Q32 as i16));
+    a.wrapping_add(mask) as u16
+}
+
 /// Barrett reduction: centered representative mod q in {-(q-1)/2,...,(q-1)/2}.
 #[inline]
 pub fn barrett_reduce(a: i16) -> i16 {
@@ -38,6 +51,20 @@ mod tests {
         let r = ((result as i32 % 3329) + 3329) % 3329;
         let expected = ((a as i32 % 3329) + 3329) % 3329;
         assert_eq!(r, expected);
+    }
+
+    #[test]
+    fn test_freeze() {
+        for a in -3328i16..3329 {
+            let f = freeze(a);
+            assert!(f < 3329, "freeze({}) = {} out of range", a, f);
+            assert_eq!(
+                i32::from(f),
+                (a as i32).rem_euclid(3329),
+                "freeze({}) wrong residue",
+                a
+            );
+        }
     }
 
     #[test]
