@@ -68,3 +68,9 @@ the `subtle` crate is no longer a dependency.
 ## Scope
 
 This policy covers the `lattice-kyber` crate published on [crates.io](https://crates.io/crates/lattice-kyber).
+
+## Acknowledgments
+
+We thank the following researchers for responsibly disclosing security issues:
+
+- **Patryk Gralewicz** — KyberSlash-class timing side-channel (CWE-208) in `Compress_d` on the decapsulation path (fixed in v0.2.2).
